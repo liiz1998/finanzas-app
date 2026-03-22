@@ -2,181 +2,122 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+import gspread
+from oauth2client.service_account import ServiceAccountCredentials
 
-# ------------------------------------------------
-# CONFIGURACIÓN
-# ------------------------------------------------
+# ---------------------------
+# CONFIGURACIÓN PÁGINA
+# ---------------------------
 st.set_page_config(
     page_title="Finanzas Personales",
-    page_icon="liz.jpeg",  # logo personalizado
+    page_icon="liz.jpeg",
     layout="wide"
 )
 
-# ------------------------------------------------
-# ESTILOS AVANZADOS (APPLE / STARTUP)
-# ------------------------------------------------
+# ---------------------------
+# CONEXIÓN GOOGLE SHEETS
+# ---------------------------
+scope = ["https://spreadsheets.google.com/feeds","https://www.googleapis.com/auth/drive"]
+creds = ServiceAccountCredentials.from_json_keyfile_name("credenciales.json", scope)
+client = gspread.authorize(creds)
+
+# Reemplaza con tu Sheet ID
+sheet_id = "1ssM9sq0CmpEOnbAtNIewca7cBDNNH6WDv6_H90Op8UU"
+sheet = client.open_by_key(sheet_id).worksheet("Datos")
+
+# ---------------------------
+# ESTILOS APP
+# ---------------------------
 st.markdown("""
 <style>
-
-body {
-    transition: background-color 0.3s, color 0.3s;
-}
-
-/* Detecta modo oscuro del navegador */
-@media (prefers-color-scheme: dark) {
-    body {
-        background-color: #1c1c1e;
-        color: #f2f2f7;
-    }
-}
-
-/* TARJETAS KPI */
-.card {
-    background: rgba(255,255,255,0.7);
-    backdrop-filter: blur(10px);
-    border-radius:18px;
-    padding:25px;
-    box-shadow:0 8px 20px rgba(0,0,0,0.05);
-    transition: all 0.3s ease;
-}
-.card:hover {
-    transform: translateY(-5px);
-    box-shadow:0 15px 35px rgba(0,0,0,0.08);
-}
-
-/* KPIs */
-.kpi-title {
-    color:#6e6e73;
-    font-size:16px;
-}
-.kpi-value {
-    font-size:30px;
-    font-weight:600;
-}
-
-/* Sección general */
-.section-card {
-    background:white;
-    padding:25px;
-    border-radius:18px;
-    box-shadow:0 8px 20px rgba(0,0,0,0.05);
-    margin-bottom:20px;
-}
-@media (prefers-color-scheme: dark) {
-    .section-card {
-        background: #2c2c2e;
-    }
-}
+/* Tus estilos Apple / Startup y modo oscuro */
+body { transition: background-color 0.3s, color 0.3s; }
+@media (prefers-color-scheme: dark) { body { background-color: #1c1c1e; color: #f2f2f7; } }
 </style>
 """, unsafe_allow_html=True)
 
-# ------------------------------------------------
+# ---------------------------
 # TÍTULO
-# ------------------------------------------------
-st.markdown('<h1 style="font-size:42px; font-weight:700;">💰 Dashboard Financiero</h1>', unsafe_allow_html=True)
+# ---------------------------
+st.markdown('<h1 style="font-size:42px;">💰 Dashboard Financiero</h1>', unsafe_allow_html=True)
 st.markdown('<h3 style="color:#6e6e73;">Control inteligente de ingresos y gastos</h3>', unsafe_allow_html=True)
 st.write("")
 
-# ------------------------------------------------
-# DATOS
-# ------------------------------------------------
-data = {
-    "Mes": ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio"],
-    "Ingresos": [5000, 5200, 4800, 5500, 6000, 5800],
-    "Gastos": [3000, 3100, 2900, 3300, 3400, 3200]
-}
-df = pd.DataFrame(data)
+# ---------------------------
+# SIDEBAR: MES + INPUTS
+# ---------------------------
+st.sidebar.markdown("## ⚙️ Selecciona mes e ingresa tus datos")
+mes = st.sidebar.selectbox("Mes", [
+    "Enero","Febrero","Marzo","Abril","Mayo","Junio",
+    "Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"
+])
 
-categorias = {
-    "Categoria": ["Vivienda", "Comida", "Transporte", "Ocio", "Servicios", "Ahorro"],
-    "Monto": [350, 250, 150, 100, 75, 50]
-}
-df_cat = pd.DataFrame(categorias)
-
-# ------------------------------------------------
-# SIDEBAR
-# ------------------------------------------------
-st.sidebar.markdown("## ⚙️ Filtros")
-mes = st.sidebar.selectbox("Selecciona mes", df["Mes"])
-df_filtrado = df[df["Mes"] == mes]
-
-ingresos = df_filtrado["Ingresos"].values[0]
-gastos = df_filtrado["Gastos"].values[0]
+# Inputs vacíos
+ingresos = st.sidebar.number_input("Ingresos del mes", min_value=0, value=0, step=100)
+gastos = st.sidebar.number_input("Gastos del mes", min_value=0, value=0, step=100)
 ahorro = ingresos - gastos
 
-# ------------------------------------------------
-# TARJETAS KPI
-# ------------------------------------------------
+# ---------------------------
+# GUARDAR EN GOOGLE SHEETS
+# ---------------------------
+records = sheet.get_all_records()
+df_sheet = pd.DataFrame(records)
+
+if mes in df_sheet["Mes"].values:
+    row_idx = df_sheet[df_sheet["Mes"] == mes].index[0] + 2
+    sheet.update_cell(row_idx, 2, ingresos)
+    sheet.update_cell(row_idx, 3, gastos)
+    sheet.update_cell(row_idx, 4, ahorro)
+else:
+    sheet.append_row([mes, ingresos, gastos, ahorro])
+
+# ---------------------------
+# ACTUALIZAR DATAFRAME PARA GRAFICOS
+# ---------------------------
+records = sheet.get_all_records()
+df = pd.DataFrame(records)
+
+df_cat = pd.DataFrame({
+    "Categoria": ["Vivienda","Comida","Transporte","Ocio","Servicios","Ahorro"],
+    "Monto": [0.35*ahorro, 0.25*ahorro, 0.15*ahorro, 0.10*ahorro, 0.075*ahorro, 0.05*ahorro]
+})
+
+# ---------------------------
+# KPIs
+# ---------------------------
 col1, col2, col3 = st.columns(3)
-
-with col1:
-    st.markdown(f"""
-    <div class="card">
-        <div class="kpi-title">Ingresos</div>
-        <div class="kpi-value">${ingresos:,}</div>
-    </div>
-    """, unsafe_allow_html=True)
-
-with col2:
-    st.markdown(f"""
-    <div class="card">
-        <div class="kpi-title">Gastos</div>
-        <div class="kpi-value">-${gastos:,}</div>
-    </div>
-    """, unsafe_allow_html=True)
-
-with col3:
-    st.markdown(f"""
-    <div class="card">
-        <div class="kpi-title">Ahorro</div>
-        <div class="kpi-value">${ahorro:,}</div>
-    </div>
-    """, unsafe_allow_html=True)
+with col1: st.metric("Ingresos", f"${ingresos:,}")
+with col2: st.metric("Gastos", f"-${gastos:,}")
+with col3: st.metric("Ahorro", f"${ahorro:,}")
 
 if gastos > ingresos:
     st.warning("⚠️ Estás gastando más de lo que ingresas")
 
-st.write("")
-
-# ------------------------------------------------
-# OBJETIVO DE AHORRO
-# ------------------------------------------------
-st.markdown("### 🎯 Objetivo de ahorro")
+# ---------------------------
+# Objetivo de ahorro
+# ---------------------------
 objetivo = 1000
-progreso = ahorro / objetivo
+progreso = ahorro/objetivo
 st.progress(min(progreso,1.0))
 st.write(f"Has ahorrado **${ahorro}** de **${objetivo}**")
-st.write("")
 
-# ------------------------------------------------
-# GRÁFICOS
-# ------------------------------------------------
+# ---------------------------
+# Gráficos
+# ---------------------------
 col1, col2 = st.columns(2)
 
 with col1:
-    st.markdown("### 📊 Gastos por categoría")
-    fig_cat = px.pie(
-        df_cat,
-        names="Categoria",
-        values="Monto",
-        hole=0.65,
-        template="simple_white"
-    )
-    st.plotly_chart(fig_cat, width="stretch")
+    st.subheader("Gastos por categoría")
+    fig_cat = px.pie(df_cat, names="Categoria", values="Monto", hole=0.65, template="simple_white")
+    st.plotly_chart(fig_cat, use_container_width=True)
 
 with col2:
-    st.markdown("### 📉 Gastos mensuales")
-    fig_gastos = px.bar(
-        df,
-        x="Mes",
-        y="Gastos",
-        color="Gastos",
-        template="simple_white"
-    )
-    st.plotly_chart(fig_gastos, width="stretch")
+    st.subheader("Gastos mensuales")
+    fig_gastos = px.bar(df, x="Mes", y="Gastos", color="Gastos", template="simple_white")
+    st.plotly_chart(fig_gastos, use_container_width=True)
 
-# ------------------------------------------------
-# TABLA
-# ------------------------------------------------
-st.markdown("### 📄 Datos completos")
-st.dataframe(df, width="stretch")
+# ---------------------------
+# Tabla de datos completos
+# ---------------------------
+st.subheader("Datos completos")
+st.dataframe(df, use_container_width=True)
