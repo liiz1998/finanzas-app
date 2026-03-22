@@ -8,28 +8,26 @@ import plotly.express as px
 # ------------------------------------------------
 st.set_page_config(
     page_title="Finanzas Personales",
-    page_icon="💎",
+    page_icon="liz.jpeg",  # logo personalizado
     layout="wide"
 )
 
 # ------------------------------------------------
-# ESTILOS AVANZADOS (APPLE / STARTUP STYLE)
+# ESTILOS AVANZADOS (APPLE / STARTUP)
 # ------------------------------------------------
 st.markdown("""
 <style>
 
-.main {
-    background-color: #fafafa;
+body {
+    transition: background-color 0.3s, color 0.3s;
 }
 
-.title {
-    font-size:42px;
-    font-weight:700;
-}
-
-.subtitle {
-    color:#6e6e73;
-    font-size:18px;
+/* Detecta modo oscuro del navegador */
+@media (prefers-color-scheme: dark) {
+    body {
+        background-color: #1c1c1e;
+        color: #f2f2f7;
+    }
 }
 
 /* TARJETAS KPI */
@@ -41,13 +39,22 @@ st.markdown("""
     box-shadow:0 8px 20px rgba(0,0,0,0.05);
     transition: all 0.3s ease;
 }
-
 .card:hover {
     transform: translateY(-5px);
     box-shadow:0 15px 35px rgba(0,0,0,0.08);
 }
 
-/* TARJETAS SECCIÓN */
+/* KPIs */
+.kpi-title {
+    color:#6e6e73;
+    font-size:16px;
+}
+.kpi-value {
+    font-size:30px;
+    font-weight:600;
+}
+
+/* Sección general */
 .section-card {
     background:white;
     padding:25px;
@@ -55,32 +62,19 @@ st.markdown("""
     box-shadow:0 8px 20px rgba(0,0,0,0.05);
     margin-bottom:20px;
 }
-
-/* SIDEBAR */
-section[data-testid="stSidebar"] {
-    background-color:#ffffff;
+@media (prefers-color-scheme: dark) {
+    .section-card {
+        background: #2c2c2e;
+    }
 }
-
-/* TEXTO KPI */
-.kpi-title {
-    color:#6e6e73;
-    font-size:16px;
-}
-
-.kpi-value {
-    font-size:30px;
-    font-weight:600;
-}
-
 </style>
 """, unsafe_allow_html=True)
 
 # ------------------------------------------------
 # TÍTULO
 # ------------------------------------------------
-st.markdown('<div class="title">💰 Dashboard Financiero</div>', unsafe_allow_html=True)
-st.markdown('<div class="subtitle">Control inteligente de ingresos y gastos</div>', unsafe_allow_html=True)
-
+st.markdown('<h1 style="font-size:42px; font-weight:700;">💰 Dashboard Financiero</h1>', unsafe_allow_html=True)
+st.markdown('<h3 style="color:#6e6e73;">Control inteligente de ingresos y gastos</h3>', unsafe_allow_html=True)
 st.write("")
 
 # ------------------------------------------------
@@ -91,26 +85,19 @@ data = {
     "Ingresos": [5000, 5200, 4800, 5500, 6000, 5800],
     "Gastos": [3000, 3100, 2900, 3300, 3400, 3200]
 }
-
 df = pd.DataFrame(data)
 
 categorias = {
     "Categoria": ["Vivienda", "Comida", "Transporte", "Ocio", "Servicios", "Ahorro"],
     "Monto": [350, 250, 150, 100, 75, 50]
 }
-
 df_cat = pd.DataFrame(categorias)
 
 # ------------------------------------------------
 # SIDEBAR
 # ------------------------------------------------
 st.sidebar.markdown("## ⚙️ Filtros")
-
-mes = st.sidebar.selectbox(
-    "Selecciona mes",
-    df["Mes"]
-)
-
+mes = st.sidebar.selectbox("Selecciona mes", df["Mes"])
 df_filtrado = df[df["Mes"] == mes]
 
 ingresos = df_filtrado["Ingresos"].values[0]
@@ -155,13 +142,10 @@ st.write("")
 # OBJETIVO DE AHORRO
 # ------------------------------------------------
 st.markdown("### 🎯 Objetivo de ahorro")
-
 objetivo = 1000
 progreso = ahorro / objetivo
-
 st.progress(min(progreso,1.0))
 st.write(f"Has ahorrado **${ahorro}** de **${objetivo}**")
-
 st.write("")
 
 # ------------------------------------------------
@@ -169,11 +153,8 @@ st.write("")
 # ------------------------------------------------
 col1, col2 = st.columns(2)
 
-# DONUT CATEGORÍAS
 with col1:
-
     st.markdown("### 📊 Gastos por categoría")
-
     fig_cat = px.pie(
         df_cat,
         names="Categoria",
@@ -181,14 +162,10 @@ with col1:
         hole=0.65,
         template="simple_white"
     )
-
     st.plotly_chart(fig_cat, width="stretch")
 
-# BARRAS MENSUALES
 with col2:
-
     st.markdown("### 📉 Gastos mensuales")
-
     fig_gastos = px.bar(
         df,
         x="Mes",
@@ -196,12 +173,10 @@ with col2:
         color="Gastos",
         template="simple_white"
     )
-
     st.plotly_chart(fig_gastos, width="stretch")
 
 # ------------------------------------------------
 # TABLA
 # ------------------------------------------------
 st.markdown("### 📄 Datos completos")
-
 st.dataframe(df, width="stretch")
