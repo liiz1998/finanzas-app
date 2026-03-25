@@ -2,3 +2,5 @@ venv/
 __pycache__/
 *.pyc
 .DS_Store
+credenciales.json
+appfinanliz-3e2ba6c51663.json
